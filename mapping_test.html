@@ -1,0 +1,243 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+ <title>Morristown Police Bladder</title>
+ <style type="text/css">
+ html { 
+ 	height: 100% 
+ }
+  body { 
+  	height: 100%; 
+  	margin: 0; 
+  	padding: 0;
+    font-family: 'Oswald', arial, serif;
+  }
+  #wrapper {
+    width: 900px;
+  }
+ header {
+ 	background-color: yellow;
+ }
+ header h3 {
+ 	font-family: Courier;
+    margin-left: 35px;
+
+ }
+ header h3 span {
+ 	font-size: 3em;
+ }
+ #map-canvas { 
+    height: 100%;
+  }
+  #map-wrapper {
+    padding: 25px 35px;
+  }
+ footer p {
+ 	float: left;
+  margin-left: 35px;
+ }
+</style>
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+<script type="text/javascript" 
+   src="http://maps.googleapis.com/maps/api/js?key=AIzaSyDPnCYcjuolKwqhCBJEuqJ_1LNdBO__pJ0&libraries=visualization">
+</script>
+<script type="text/javascript">
+  if (window.location.protocol == "file:") {
+    alert('This script only works when loaded from a web server,' +
+        ' not from a file on your computer.');
+  }
+  function ftOnLoadClientApi() {
+    gapi.client.setApiKey('AIzaSyDPnCYcjuolKwqhCBJEuqJ_1LNdBO__pJ0');
+  }
+</script>
+<script type="text/javascript" src="https://apis.google.com/js/client.js?onload=ftOnLoadClientApi">
+</script>
+<script type="text/javascript">
+var map;
+
+function loadApi() {
+    gapi.client.load('fusiontables', 'v1', initialize);
+}
+
+function initialize() {
+
+    var latlng = new google.maps.LatLng(40.79884335508617, -74.47816435740964);
+
+    var myOptions = {
+        zoom: 15,
+        center: latlng,
+        mapTypeId: google.maps.MapTypeId.HYBRID
+    };
+
+    map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+
+    //get data for heatmap from fusion table
+
+    var query = "SELECT location FROM " +
+        '1hjI8ZO-YHHr92W-2NBUm4rFTeKgVVUR0CuDKhfVK' + ' LIMIT 1000';
+    var encodedQuery = encodeURIComponent(query);
+
+
+    var url = ['https://www.googleapis.com/fusiontables/v1/query'];
+    url.push('?sql=' + encodedQuery);
+    url.push('&key=AIzaSyDPnCYcjuolKwqhCBJEuqJ_1LNdBO__pJ0');
+    url.push('&callback=?');
+    $.ajax({
+        url: url.join(''),
+        dataType: 'jsonp',
+        success: function (data) {
+            var rows = data['rows'];
+            var ftData = "";
+            for (var i in rows) {
+                console.log(rows[i]);
+            }
+        }
+    });
+
+    /*
+    var query = 'SELECT location FROM 1hjI8ZO-YHHr92W-2NBUm4rFTeKgVVUR0CuDKhfVK LIMIT 1000';
+    var request = gapi.client.fusiontables.query.sqlGet({
+        sql: query
+    });
+    request.execute(function (response) {
+        onDataFetched(response);
+    });
+    */
+    //marker map of this weeks incidents
+    var markerLayer;
+
+    var markerLayerTableid = "15IrhcLkv-x77qzimZP4yZqjqE2JiX0MViTGO5x9V";
+
+
+    markerLayer = new google.maps.FusionTablesLayer({
+        query: {
+            select: 'Crime/Incident Location',
+            from: markerLayerTableid
+        },
+        map: map,
+        styles: [{
+            markerOptions: {
+                iconName: "large_yellow"
+            }
+        }]
+    });
+
+
+
+    google.maps.event.addListener(markerLayer, 'click', function (e) {
+        e.infoWindowHtml = "<b>" + e.row.Hour.value + "</b><br><b>" + e.row.Day.value + ", " + e.row.Date.value + "</b><br><b>" + e.row['Crime/Incident Location'].value + "</b><hr><b>" + e.row['Suspect Sex'].value + "</b><br><b>" + e.row['Suspect Age'].value + "</b><br>Hometown: <b>" + e.row['Suspect City'].value + "</b><hr>Arrested by: " + e.row['Officer Name'].value;
+    });
+
+    markerLayer.setMap(map);
+
+    var heatmapData = [
+    new google.maps.LatLng(37.782, -122.447),
+    new google.maps.LatLng(37.782, -122.445),
+    new google.maps.LatLng(37.782, -122.443),
+    new google.maps.LatLng(37.782, -122.441),
+    new google.maps.LatLng(37.782, -122.439),
+    new google.maps.LatLng(37.782, -122.437),
+    new google.maps.LatLng(37.782, -122.435),
+    new google.maps.LatLng(37.785, -122.447),
+    new google.maps.LatLng(37.785, -122.445),
+    new google.maps.LatLng(37.785, -122.443),
+    new google.maps.LatLng(37.785, -122.441),
+    new google.maps.LatLng(37.785, -122.439),
+    new google.maps.LatLng(37.785, -122.437),
+    new google.maps.LatLng(37.785, -122.435)
+
+    ];
+    /*for (var i = 0; i < results.features.length; i++) {
+    var coords = results.features[i].geometry.coordinates;
+    var latLng = new google.maps.LatLng(coords[1], coords[0]);
+    heatmapData.push(latLng);
+  }*/
+    //create heatmap
+    var heatmap;
+
+    heatmap = new google.maps.visualization.HeatmapLayer({
+
+        data: heatmapData,
+        dissipating: true,
+        radius: 10,
+        map: map
+    });
+
+    heatmap.setMap(map);
+
+}
+//create array of heatmap data
+/*
+function onDataFetched(response) {
+    if (response.error) {
+        alert('Unable to fetch data. ' + response.error.message +
+            ' (' + response.error.code + ')');
+    } else {
+        drawHeatmap(extractLocations(response.rows));
+    }
+}
+var locations;
+
+function extractLocations(rows) {
+    // Patterns for latitude/longitude in a single field, separated by a space
+    // or comma, with optional north/south/east/west orientation
+
+    for (var i = 0; i < rows.length; i++) {
+        var row = rows[i];
+        console.log(row[i]);
+        locations.push(row[i]);
+        /* if (row[0]) {
+        var parts = row[0].match(parseRegexp);
+        if (parts) {
+          var latString = parts[1];
+          var latOrientation = parts[2];
+          var lngString = parts[3];
+          var lngOrientation = parts[4];
+          var lat = parseFloat(latString);
+          var lng = parseFloat(lngString);
+          if (latOrientation) {
+            var latAdjust = northRegexp.test(latOrientation) ? 1 : -1;
+            lat = latAdjust * Math.abs(lat);
+          }
+          if (lngOrientation) {
+            var lngAdjust = eastRegexp.test(lngOrientation) ? 1 : -1;
+            lng = lngAdjust * Math.abs(lng);
+          }
+          var latLng = new google.maps.LatLng(lat, lng);
+          locations.push(latLng);
+        }
+      }
+    }
+    return locations;
+}
+
+/*for (var i = 0; i < results.features.length; i++) {
+    var coords = results.features[i].geometry.coordinates;
+    var latLng = new google.maps.LatLng(coords[1], coords[0]);
+    heatmapData.push(latLng);
+  }*/
+//create heatmap
+/*var heatmap;
+
+heatmap = new google.maps.visualization.HeatmapLayer({
+
+    data: heatmapData,
+    dissipating: false,
+    radius: 10,
+    map: map
+});
+
+heatmap.setMap(map);
+*/
+google.maps.event.addDomListener(window, 'load', loadApi);
+
+</script>
+</head>
+<body onload="initialize()">
+<div id="wrapper">
+<header><h3>the MorristownTownGreen.com <span>Police Bladder</span></h3></header>
+<div id="map-wrapper"><div id="map_canvas" style="width:800px; height:500px"></div></div>
+<footer><p>Sponsored by:</p><img src="https://dl.dropboxusercontent.com/u/4525754/franksIndustrial.jpg"></footer>
+</div>
+</body>
+</html>	
